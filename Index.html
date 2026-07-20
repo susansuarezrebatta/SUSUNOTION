@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion Science News & Clock</title>
+  
+  <!-- Tipografía obligatoria para el reloj -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Variables CSS manipulables por JS */
+    :root {
+      --bg-color: #000000;
+      --text-color: #FF00FF;
+      --font-scale: 1;
+    }
+
+    /* Reset y Contenedor Principal adaptado para Notion embed */
+    * {
+      box-sizing: border-box;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden; /* Evita scroll vertical/horizontal en Notion */
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Barra de Configuración (Toolbar) */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px;
+      justify-content: center;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: calc(12px * var(--font-scale));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .toolbar select, .toolbar input, .toolbar button {
+      background: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--text-color);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: inherit;
+      cursor: pointer;
+      outline: none;
+      transition: opacity 0.2s;
+    }
+
+    .toolbar button:hover {
+      opacity: 0.8;
+    }
+
+    .color-picker {
+      padding: 0;
+      width: 26px;
+      height: 26px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Reloj Digital */
+    .clock-container {
+      font-family: 'Bebas Neue', cursive;
+      font-weight: 700;
+      font-size: calc(75px * var(--font-scale));
+      text-align: center;
+      margin: 10px 0 0 0;
+      letter-spacing: 3px;
+      line-height: 1;
+    }
+
+    /* Contenedor de Noticias */
+    .news-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      text-align: center;
+      overflow: hidden; /* Mantiene el widget estricto en sus límites */
+    }
+
+    .news-title {
+      font-family: 'Impact', sans-serif;
+      font-size: calc(24px * var(--font-scale));
+      margin: 0 0 8px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.2;
+    }
+
+    .news-source {
+      font-family: 'Impact', sans-serif;
+      font-size: calc(14px * var(--font-scale));
+      margin-bottom: 10px;
+      opacity: 0.75;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .news-image {
+      flex-shrink: 1;
+      min-height: 0; /* Permite a la imagen encogerse en contenedores pequeños */
+      width: auto;
+      max-width: 100%;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      display: none; /* Oculto hasta que se cargue una imagen válida */
+      border: 1px solid var(--text-color);
+    }
+
+    .share-btn {
+      font-family: sans-serif;
+      padding: 6px 16px;
+      font-weight: bold;
+      background: var(--bg-color);
+      color: var(--text-color);
+      border: 2px solid var(--text-color);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: calc(12px * var(--font-scale));
+    }
+
+    .share-btn:hover {
+      background: var(--text-color);
+      color: var(--bg-color);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Panel de Filtros y Configuración -->
+  <div class="toolbar">
+    <select id="lang-select">
+      <option value="es" selected>Español</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="it">Italiano</option>
+    </select>
+
+    <select id="country-select">
+      <optgroup label="América">
+        <option value="us">Estados Unidos</option>
+        <option value="ca">Canadá</option>
+        <option value="mx">México</option>
+        <option value="br">Brasil</option>
+        <option value="ar">Argentina</option>
+      </optgroup>
+      <optgroup label="Europa">
+        <option value="gb">Reino Unido</option>
+        <option value="es" selected>España</option>
+        <option value="fr">Francia</option>
+        <option value="it">Italia</option>
+        <option value="de">Alemania</option>
+      </optgroup>
+    </select>
+
+    <button id="format-toggle" title="Cambiar formato de hora">24H</button>
+
+    <input type="color" id="bg-color" class="color-picker" title="Color de Fondo" value="#000000">
+    <input type="color" id="text-color" class="color-picker" title="Color de Texto" value="#FF00FF">
+    
+    <div class="slider-container" title="Tamaño de texto">
+      <span>A</span>
+      <input type="range" id="size-slider" min="0.6" max="1.5" step="0.1" value="1">
+    </div>
+  </div>
+
+  <!-- Reloj Digital -->
+  <div class="clock-container" id="clock">00:00:00</div>
+
+  <!-- Contenedor de Noticias -->
+  <div class="news-container">
+    <h2 class="news-title" id="news-title">Cargando noticia científica...</h2>
+    <div class="news-source" id="news-source">Buscando fuente...</div>
+    <img id="news-image" class="news-image" src="" alt="Noticia científica">
+    <button class="share-btn" id="share-btn">Compartir</button>
+  </div>
+
+  <script>
+    // --- 1. ESTADOS Y DICCIONARIOS ---
+    let use24Hour = true;
+    let currentNewsUrl = "";
+    
+    const translations = {
+      es: { loading: "Cargando noticia...", source: "Buscando fuente...", share: "Compartir", noNews: "No hay noticias recientes con este filtro.", error: "Error al conectar con la API." },
+      en: { loading: "Loading news...", source: "Searching source...", share: "Share", noNews: "No recent news with this filter.", error: "Error connecting to API." },
+      fr: { loading: "Chargement...", source: "Recherche de source...", share: "Partager", noNews: "Aucune actualité récente avec ce filtre.", error: "Erreur de connexion à l'API." },
+      it: { loading: "Caricamento...", source: "Ricerca fonte...", share: "Condividi", noNews: "Nessuna notizia recente con questo filtro.", error: "Errore di connessione all'API." }
+    };
+
+    // --- 2. LÓGICA DEL RELOJ ---
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      let ampm = "";
+
+      if (!use24Hour) {
+        ampm = hours >= 12 ? " PM" : " AM";
+        hours = hours % 12 || 12;
+      }
+      
+      hours = String(hours).padStart(2, '0');
+      document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}${ampm}`;
+    }
+    
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- 3. LÓGICA DE API DE NOTICIAS ---
+    
+    // REEMPLAZA 'YOUR_API_KEY' POR TU CÓDIGO REAL ALFANUMÉRICO DE NEWSDATA.IO
+    const API_KEY = 'YOUR_API_KEY'; 
+
+    async function fetchNews() {
+      const lang = document.getElementById('lang-select').value;
+      const country = document.getElementById('country-select').value;
+      
+      const titleEl = document.getElementById('news-title');
+      const sourceEl = document.getElementById('news-source');
+      const imgEl = document.getElementById('news-image');
+      const shareBtn = document.getElementById('share-btn');
+
+      // Actualizar idioma de UI y estado de carga
+      titleEl.textContent = translations[lang].loading;
+      sourceEl.textContent = translations[lang].source;
+      shareBtn.textContent = translations[lang].share;
+      imgEl.style.display = 'none';
+      imgEl.src = "";
+      currentNewsUrl = "";
+
+      if(API_KEY === 'YOUR_API_KEY') {
+        titleEl.textContent = "Falta tu API Key";
+        sourceEl.textContent = "Reemplaza 'YOUR_API_KEY' en el código por tu clave real.";
+        return;
+      }
+
+      try {
+        // Se actualizó a la ruta /latest y se añadió &q=El%20comercio respetando los filtros del widget
+        const apiUrl = `https://newsdata.io/api/1/latest?apikey=${API_KEY}&q=El%20comercio&category=science&country=${country}&language=${lang}`;
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          const article = data.results.find(a => a.image_url) || data.results[0];
+          
+          titleEl.textContent = article.title;
+          sourceEl.textContent = article.creator ? `${article.creator[0]} | ${article.source_id}` : article.source_id;
+          currentNewsUrl = article.link;
+
+          if (article.image_url) {
+            imgEl.src = article.image_url;
+            imgEl.style.display = 'block';
+          }
+        } else {
+          titleEl.textContent = translations[lang].noNews;
+          sourceEl.textContent = "---";
+        }
+      } catch (error) {
+        titleEl.textContent = translations[lang].error;
+        sourceEl.textContent = "Verifica la consola";
+        console.error("News API Error:", error);
+      }
+    }
+
+    // --- 4. EVENT LISTENERS PARA UI Y PERSONALIZACIÓN ---
+    document.getElementById('format-toggle').addEventListener('click', (e) => {
+      use24Hour = !use24Hour;
+      e.target.textContent = use24Hour ? "24H" : "12H";
+      updateClock();
+    });
+
+    document.getElementById('lang-select').addEventListener('change', fetchNews);
+    document.getElementById('country-select').addEventListener('change', fetchNews);
+
+    // CSS Variables manipuladas en tiempo real
+    document.getElementById('bg-color').addEventListener('input', (e) => {
+      document.documentElement.style.setProperty('--bg-color', e.target.value);
+    });
+    
+    document.getElementById('text-color').addEventListener('input', (e) => {
+      document.documentElement.style.setProperty('--text-color', e.target.value);
+    });
+
+    document.getElementById('size-slider').addEventListener('input', (e) => {
+      document.documentElement.style.setProperty('--font-scale', e.target.value);
+    });
+
+    // Compartir nativo o portapapeles
+    document.getElementById('share-btn').addEventListener('click', async () => {
+      if (!currentNewsUrl) return;
+      
+      const title = document.getElementById('news-title').textContent;
+      
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: title,
+            url: currentNewsUrl
+          });
+        } catch (err) {
+          console.log("Compartir cancelado");
+        }
+      } else {
+        navigator.clipboard.writeText(currentNewsUrl).then(() => {
+          const originalText = document.getElementById('share-btn').textContent;
+          document.getElementById('share-btn').textContent = "¡Copiado!";
+          setTimeout(() => {
+            document.getElementById('share-btn').textContent = originalText;
+          }, 2000);
+        });
+      }
+    });
+
+    // Carga inicial
+    fetchNews();
+  </script>
+</body>
+</html>
